@@ -1,0 +1,459 @@
+{
+  "name": "Automation Analytics Workflow with N8N",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "car-query",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -400,
+        32
+      ],
+      "id": "1dd19117-57d9-4cdc-81f6-bca53276a026",
+      "name": "Webhook",
+      "webhookId": "c8e50b78-720b-45f3-8c69-11eec3137411"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1NUdJ6oD9zWH1ZP-MjPi5DpZHumTLelGugUUFwGPbj4U",
+          "mode": "list",
+          "cachedResultName": "CarData",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NUdJ6oD9zWH1ZP-MjPi5DpZHumTLelGugUUFwGPbj4U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 178580491,
+          "mode": "list",
+          "cachedResultName": "Car_Details",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NUdJ6oD9zWH1ZP-MjPi5DpZHumTLelGugUUFwGPbj4U/edit#gid=178580491"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -208,
+        32
+      ],
+      "id": "31574068-928a-4433-b709-a72ad36babc0",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ZH7X4YO3QXcYGdSw",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiAnswer = $('Execute node').first().json.answer;\nconst webhookData = $('Webhook').first().json;\nconst userQuery = webhookData.body?.question || \"\";\nconst dataset = $('Clean Data').first().json.dataset || [];\nconst columns = Object.keys(dataset[0] || {});\nconst qLower = userQuery.toLowerCase();\n\nconst dataForGemini = {};\nfor (const col of columns) {\n  const values = dataset.map(r => r[col]).filter(v => v !== null && v !== undefined && v !== \"\");\n  const isNumeric = values.every(v => typeof v === \"number\");\n  if (isNumeric) {\n    const sorted = [...values].sort((a, b) => a - b);\n    const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);\n    dataForGemini[col] = { type: 'numeric', min: sorted[0], max: sorted[sorted.length-1], avg };\n  } else {\n    const counts = {};\n    for (const v of values) counts[v] = (counts[v] || 0) + 1;\n    const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 10);\n    dataForGemini[col] = { type: 'categorical', top10: sorted };\n  }\n}\n\nconst mentionedCols = columns.filter(col => qLower.includes(col.toLowerCase()));\nlet crossTabData = null;\nlet crossTabDescription = '';\nif (mentionedCols.length >= 2) {\n  const col1 = mentionedCols[0];\n  const col2 = mentionedCols[1];\n  const tab = {};\n  for (const row of dataset) {\n    const v1 = String(row[col1] || 'Unknown');\n    const v2 = String(row[col2] || 'Unknown');\n    if (!tab[v1]) tab[v1] = {};\n    tab[v1][v2] = (tab[v1][v2] || 0) + 1;\n  }\n  crossTabData = Object.entries(tab)\n    .sort((a, b) => Object.values(b[1]).reduce((x,y)=>x+y,0) - Object.values(a[1]).reduce((x,y)=>x+y,0))\n    .slice(0, 10)\n    .reduce((acc, [k, v]) => { acc[k] = v; return acc; }, {});\n  crossTabDescription = `Cross-tabulation of \"${col1}\" vs \"${col2}\" (top 10 ${col1} values):`;\n} else if (mentionedCols.length === 1) {\n  crossTabDescription = `Single column data for \"${mentionedCols[0]}\":`;\n  crossTabData = dataForGemini[mentionedCols[0]];\n} else {\n  crossTabDescription = 'Full dataset aggregated data:';\n  crossTabData = dataForGemini;\n}\n\nconst prompt = `You are a premium HTML dashboard generator for AxionDrive, a car analytics platform.\nQuestion: ${userQuery}\nDataset has ${dataset.length} rows with these columns: ${columns.join(', ')}\n${crossTabDescription}\n${JSON.stringify(crossTabData, null, 2)}\n\nIMPORTANT — READ QUESTION FIRST BEFORE GENERATING ANYTHING:\n- If question asks for a SINGLE chart type (pie, bar, line, donut, pie chart, bar graph) → generate ONLY that one chart, full width, centered, no KPI strip, no map, no other charts, no insights bar\n- If question asks for \"dashboard\", \"full dashboard\", \"overview\", \"analytics\", \"kpi\" → generate the complete layout\n- NEVER show the full dashboard layout for a single chart request\n- NEVER show KPI cards for a single chart request\n\nSTRICT RULES — DO NOT DEVIATE:\n\n1. Return ONLY raw HTML starting with <!DOCTYPE html>. No markdown, no backticks, no explanation.\n\n2. EXACT CSS VARIABLES:\n--bg: #0a0a0f\n--surface: #12121a\n--surface2: #1a1a26\n--border: rgba(255,255,255,0.06)\n--accent: #e8ff47\n--accent2: #47c8ff\n--accent3: #ff6b47\n--text: #f0f0f0\n--muted: #6b6b80\n\n3. FONTS:\n<link href=\"https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap\" rel=\"stylesheet\">\nHeadings: Bebas Neue, Body: DM Sans\n\n4. LAYOUT:\n- html, body: margin:0; padding:0; background:#0a0a0f; color:#f0f0f0; font-family:'DM Sans',sans-serif; overflow-x:hidden;\n- Outer wrapper: max-width:1400px; margin:0 auto; padding:20px;\n- Use CSS Grid for all multi-column layouts\n- Dashboard may scroll vertically if needed\n\n5. HEADER — compact, single row:\n- Left: \"AxionDrive\" Bebas Neue 40px gradient text #e8ff47→#b8ff00\n- Center: Dashboard title based on question, font-size 18px\n- Right: \"Generated: [current date]\" color #6b6b80 font-size 12px\n- Bottom border: 1px solid rgba(255,255,255,0.06)\n- padding-bottom: 16px; margin-bottom: 20px;\n\n6. KPI STRIP — only for full dashboard requests — single row of 5 equal cards, margin-bottom: 20px:\n- Total Records, Avg Price, Top Make, Top Location, Top Fuel Type\n- Card: background #12121a, border-radius 12px, padding 16px 20px\n- Label: 11px uppercase letter-spacing 1px color #6b6b80\n- Value: Bebas Neue 32px color #e8ff47\n- Trend: font-size 12px, ▲ green #2ecc71, ▼ red #e74c3c\n- CRITICAL: If a KPI value cannot be determined from the data, hide that card entirely — NEVER show \"NOT CALCULATED\", \"N/A\", or any placeholder text\n\n7. MAIN GRID — 2 column, margin-bottom: 20px:\n- grid-template-columns: 55% 45%; gap: 20px;\n- Left: vertical bar chart card — Top 10 Makes by count\n  * Card: background #12121a, border-radius 12px, padding 20px\n  * Card title: \"Top 10 Makes\" 13px uppercase #6b6b80 margin-bottom 12px\n  * Canvas wrapper: position:relative; height:320px; width:100%;\n- Right: 2 doughnut chart cards stacked vertically\n  * display:flex; flex-direction:column; gap:16px;\n  * Each doughnut card: background #12121a, border-radius 12px, padding 20px\n  * Card title: 13px uppercase #6b6b80 margin-bottom 12px\n  * Canvas wrapper: position:relative; height:200px; width:100%;\n\n8. BOTTOM ROW — 2 columns, margin-bottom: 20px:\n- grid-template-columns: 38% 62%; gap: 20px;\n- Left: vertical bar chart — Top 10 Makes by count\n  * Card: background #12121a, border-radius 12px, padding 20px\n  * Card title: \"Makes Distribution\" 13px uppercase #6b6b80 margin-bottom 12px\n  * Canvas wrapper: position:relative; height:320px; width:100%;\n- Right: INDIA MAP card\n  * Card: background #12121a, border-radius 12px, padding 20px\n  * Card title: \"City Distribution\" 13px uppercase #6b6b80 margin-bottom 12px\n  * Map div: id=\"indiaMap\", height:320px; width:100%; border-radius:8px; overflow:hidden;\n\n9. INDIA MAP — load Leaflet DYNAMICALLY only (NO static script/link tags for Leaflet in HTML head):\n  Add this CSS in the <style> tag for dark popups:\n    .dark-popup .leaflet-popup-content-wrapper {\n      background: #1a1a26 !important;\n      border: 1px solid rgba(232,255,71,0.3) !important;\n      box-shadow: 0 4px 20px rgba(0,0,0,0.6) !important;\n      border-radius: 8px !important;\n      padding: 0 !important;\n      color: #f0f0f0 !important;\n    }\n    .dark-popup .leaflet-popup-tip-container .leaflet-popup-tip {\n      background: #1a1a26 !important;\n      box-shadow: none !important;\n    }\n    .dark-popup .leaflet-popup-content {\n      margin: 0 !important;\n      color: #f0f0f0 !important;\n    }\n    .dark-popup .leaflet-popup-content p {\n      margin: 0 !important;\n      color: #f0f0f0 !important;\n    }\n\n  Write this exact JS pattern inside window.onload AFTER chart initialization:\n    var leafletLink = document.createElement('link');\n    leafletLink.rel = 'stylesheet';\n    leafletLink.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';\n    document.head.appendChild(leafletLink);\n    var leafletScript = document.createElement('script');\n    leafletScript.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';\n    document.head.appendChild(leafletScript);\n    leafletScript.onload = function() {\n      var map = L.map('indiaMap', { zoomControl:true, attributionControl:false }).setView([20.5937, 78.9629], 4);\n      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);\n      var cityData = { Mumbai:427, Delhi:312, Bangalore:298, Chennai:187, Hyderabad:203, Pune:245, Kolkata:156, Ahmedabad:134, Jaipur:98, Lucknow:87, Kochi:76, Coimbatore:65 };\n      var cityCoords = { Mumbai:[19.0760,72.8777], Delhi:[28.6139,77.2090], Bangalore:[12.9716,77.5946], Chennai:[13.0827,80.2707], Hyderabad:[17.3850,78.4867], Pune:[18.5204,73.8567], Kolkata:[22.5726,88.3639], Ahmedabad:[23.0225,72.5714], Jaipur:[26.9124,75.7873], Lucknow:[26.8467,80.9462], Kochi:[9.9312,76.2673], Coimbatore:[11.0168,76.9558] };\n      var counts = Object.values(cityData);\n      var minC = Math.min.apply(null, counts);\n      var maxC = Math.max.apply(null, counts);\n      Object.keys(cityData).forEach(function(city) {\n        var count = cityData[city];\n        var radius = 15 + ((count - minC) / (maxC - minC)) * 25;\n        L.circleMarker(cityCoords[city], {\n          radius: radius,\n          fillColor: '#e8ff47',\n          color: '#e8ff47',\n          weight: 0,\n          fillOpacity: 0.75\n        }).bindPopup(\n          '<div style=\"background:#1a1a26;border:1px solid rgba(232,255,71,0.3);border-radius:8px;padding:8px 12px;min-width:120px;\">' +\n          '<div style=\"color:#e8ff47;font-weight:600;font-size:13px;\">' + city + '</div>' +\n          '<div style=\"color:#f0f0f0;font-size:12px;margin-top:2px;\">Cars: ' + count + '</div>' +\n          '</div>',\n          { className: 'dark-popup' }\n        ).addTo(map);\n      });\n      setTimeout(function() { map.invalidateSize(); }, 400);\n    };\n\n10. INSIGHTS BAR — only for full dashboard, at very bottom:\n- background #12121a, border-radius 12px, padding 14px 24px, margin-bottom 10px\n- font-size 12px, color #9090a8, line-height 1.6\n- 3-4 insights from actual data separated by · dot\n- Label \"INSIGHTS\" in #e8ff47 Bebas Neue 14px before the text\n\n11. CHART.JS:\n- Load from https://cdn.jsdelivr.net/npm/chart.js in <head> as normal script tag\n- Initialize ALL Chart.js charts inside window.onload\n- ALL charts: responsive:true, maintainAspectRatio:false\n- Every BAR chart plugins block:\n    plugins: { legend:{display:false}, tooltip:{backgroundColor:'#1a1a26',titleColor:'#f0f0f0',bodyColor:'#9090a8'} }\n- Every DOUGHNUT/PIE chart plugins block:\n    plugins: { legend:{display:true,position:'right',labels:{color:'#9090a8',boxWidth:12,font:{size:11}}}, tooltip:{backgroundColor:'#1a1a26',titleColor:'#f0f0f0',bodyColor:'#9090a8'} }\n- Bar: borderRadius:4, borderWidth:0\n- Doughnut: cutout:'65%', NO scales key at all\n- Grid: color:'rgba(255,255,255,0.04)', Ticks: color:'#6b6b80'\n- After creating each chart instance call: instance.resize();\n- Every canvas: style=\"display:block;width:100%;height:100%;\"\n\n12. COLORS:\nconst COLORS = ['#e8ff47','#47c8ff','#ff6b47','#9b59b6','#2ecc71','#f39c12','#e74c3c','#1abc9c','#3498db','#d35400','#c0392b','#16a085','#8e44ad','#27ae60','#2980b9','#f1c40f','#e67e22','#95a5a6','#7f8c8d','#34495e'];\n- ALL bar charts (vertical + horizontal): backgroundColor: COLORS.slice(0, data.length) — each bar different color\n- ALL doughnuts/pie charts: backgroundColor: COLORS.slice(0, mainLabels.length), borderColor: '#0a0a0f', borderWidth: 2\n- Others slice: always '#6b6b80'\n- NEVER use Chart.js default colors\n\n13. OTHERS GROUPING — MANDATORY for ALL doughnut and pie charts:\n- ALWAYS run this logic before creating any doughnut or pie chart:\n    const THRESHOLD = 0.02;\n    const total = rawData.reduce((a,b) => a+b, 0);\n    const mainLabels = [], mainData = [];\n    let othersTotal = 0;\n    for (let i = 0; i < rawLabels.length; i++) {\n      if (rawData[i] / total >= THRESHOLD) {\n        mainLabels.push(rawLabels[i]);\n        mainData.push(rawData[i]);\n      } else {\n        othersTotal += rawData[i];\n      }\n    }\n    if (othersTotal > 0) { mainLabels.push('Others'); mainData.push(othersTotal); }\n- ALWAYS use mainLabels and mainData for the chart — NEVER use raw arrays directly\n- This groups all slices under 2% into a single \"Others\" slice\n\n14. ALL text: NEVER use #000,#111,#222,#333,#444 anywhere\n15. POPULATE all charts with real data from dataset\n16. NEVER leave any chart empty\n17. NO data table anywhere\n18. NO filters row\n19. NO scrolling ticker\n\n20. CHART RESIZE PREVENTION:\n- Every canvas wrapped in: <div style=\"position:relative;height:Xpx;width:100%;\"><canvas></canvas></div>\n- Card containers: overflow:hidden\n- NO window resize listeners for charts\n\n21. CHART TYPE RULES:\n- Bar graph → single large vertical bar chart centered, full width, height 500px wrapper\n- Pie/donut → single large doughnut centered, full width, height 500px wrapper\n- Line → single large line chart centered, full width, height 500px wrapper\n- KPI → KPI strip only\n- Full dashboard → complete layout as above`;\n\nreturn [{ json: { prompt, aiAnswer, question: userQuery, dataset } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ],
+      "id": "3c362fc2-bfb9-4d09-9c1a-ac107aa5c38e",
+      "name": "Build Dashboard"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all rows\nlet rawData = $input.all().map(item => item.json);\n\n// Remove completely empty rows\nrawData = rawData.filter(row =>\n  Object.values(row).some(value => value !== null && value !== \"\")\n);\n\n// Clean + normalize values\nrawData = rawData.map(row => {\n  const cleaned = {};\n  for (let key in row) {\n    let value = row[key];\n    if (typeof value === \"string\") {\n      value = value.trim();\n      if (value === \"\") value = null;\n    }\n    if (\n      value !== null &&\n      value !== \"\" &&\n      !isNaN(value) &&\n      value !== true &&\n      value !== false\n    ) {\n      value = Number(value);\n    }\n    cleaned[key] = value;\n  }\n  return cleaned;\n});\n\n// Remove exact duplicates\nconst seen = new Set();\nrawData = rawData.filter(row => {\n  const str = JSON.stringify(row);\n  if (seen.has(str)) return false;\n  seen.add(str);\n  return true;\n});\n\n// Detect column types\nconst columnTypes = {};\nif (rawData.length > 0) {\n  const sample = rawData[0];\n  for (let key in sample) {\n    const values = rawData.map(r => r[key]).filter(v => v !== null);\n    const numericCount = values.filter(v => typeof v === \"number\").length;\n    const totalCount = values.length;\n    if (numericCount / totalCount > 0.7) {\n      columnTypes[key] = \"numeric\";\n    } else {\n      columnTypes[key] = \"categorical\";\n    }\n  }\n}\n\n// Auto-detect critical columns (categorical with less than 5% nulls)\nconst criticalColumns = Object.keys(columnTypes).filter(col => {\n  if (columnTypes[col] !== 'categorical') return false;\n  const nullCount = rawData.filter(r => r[col] === null || r[col] === undefined).length;\n  const nullPercent = nullCount / rawData.length;\n  return nullPercent < 0.05;\n});\n\n// Delete rows where critical columns are null\nrawData = rawData.filter(row => {\n  return criticalColumns.every(col => {\n    return row[col] !== null && row[col] !== undefined && row[col] !== '';\n  });\n});\n\nreturn [\n  {\n    json: {\n      dataset: rawData,\n      eda: {\n        total_rows: rawData.length,\n        total_columns: Object.keys(columnTypes).length,\n        column_types: columnTypes,\n        critical_columns: criticalColumns\n      }\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        48
+      ],
+      "id": "df58d50e-d370-47aa-8cd7-eb753bce7d27",
+      "name": "Clean Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhookData = $('Webhook').first().json;\nconst userQuery = webhookData.body?.question || \"Analyse the dataset\";\nconst dataset = $json.dataset || [];\nconst columns = Object.keys(dataset[0] || {});\nconst sample = dataset.slice(0, 3);\n\n// Detect if question is general knowledge (not dataset specific)\nconst datasetKeywords = ['price', 'make', 'model', 'fuel', 'transmission', 'location', 'city', 'count', 'average', 'avg', 'top', 'list', 'how many', 'which city', 'most expensive', 'cheapest', 'dataset', 'cars in', 'total'];\nconst isDatasetQuestion = datasetKeywords.some(k => userQuery.toLowerCase().includes(k));\n\nlet prompt;\n\nif (!isDatasetQuestion) {\n  prompt = `You are AxionDrive, an AI-powered car analytics assistant built for the Indian car market.\nYou have access to a dataset of ${dataset.length} cars with columns: ${columns.join(', ')}.\nAnswer this question in plain conversational English. Be helpful and concise.\nQuestion: ${userQuery}\nSTRICT RULES:\n- Reply in 3-5 clean sentences maximum\n- Always introduce yourself as AxionDrive when asked what you are\n- If asked about specific car names or models, look them up from the dataset context, not generic knowledge\n- NO JavaScript code, NO function, NO return statement\n- NO backticks, NO markdown\n- Just plain readable text answer\n- If user asks about \"this graph\", \"this chart\", \"explain this\", \"what is this based on\" — reply with:\n  \"Please mention what you'd like to know specifically, for example: 'What is the bar graph of makes based on?' and I'll answer it directly.\"\n- NEVER start mid-sentence — always start from the beginning`;\n} else {\n  // Dataset question — generate JavaScript code\n  prompt = `You are a JavaScript code generator. Write a function body to answer this question.\nQuestion: ${userQuery}\nThe variable 'dataset' is an array of ${dataset.length} objects.\nColumns available: ${JSON.stringify(columns)}\nSample (first 3 rows): ${JSON.stringify(sample, null, 2)}\n\nSTRICT RULES:\n- Write ONLY the function body\n- No function declaration\n- No markdown, no backticks, no explanation\n- Last line MUST be: return { answer: \"your answer here\" }\n- Always convert answer to readable string\n- Use toLocaleString('en-IN') for prices\n\nFORMATTING RULES — VERY IMPORTANT:\n- NEVER return a single long comma-separated paragraph\n- For lists of items (top 10 cars, top 5 makes etc): format each item on its own line using \\\\n\n  Example: \"1. Audi A6 - ₹15,00,000\\\\n2. Mercedes S-Class - ₹15,00,000\\\\n3. Skoda Superb - ₹15,00,000\"\n- For summary stats: use a clean structured format like:\n  \"Total Cars: 226\\\\nAverage Price: ₹12,42,101\\\\nMost Expensive: Audi A6 - ₹15,00,000\\\\nCheapest: Tata Hexa - ₹8,00,000\"\n- For single value answers: just return the value cleanly\n- Always use ₹ symbol for Indian prices instead of plain numbers\n- NEVER dump all data in one line separated by commas\n\n- For KPI questions: calculate total count, avg price, most expensive, cheapest, most common make\n- NEVER return null, array or object directly`;\n}\n\nreturn [{ json: { question: userQuery, prompt, dataset } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        48
+      ],
+      "id": "375d65a0-9ace-41b2-9340-75fc6b569a0a",
+      "name": "Build Summary"
+    },
+    {
+      "parameters": {
+        "jsCode": "let code = $json.choices?.[0]?.message?.content || $json.content?.parts?.[0]?.text || $json.content || $json.text || \"\";\nif (typeof code === 'object') {\n  code = JSON.stringify(code);\n}\n// Remove all possible markdown formatting\ncode = code\n  .replace(/```javascript/gi, '')\n  .replace(/```js/gi, '')\n  .replace(/```/g, '')\n  .trim();\n// Remove any explanation text before the code\n// Find where actual code starts\nconst codeStart = code.search(/(const|let|var|function|\\/\\/)/);\nif (codeStart > 0) {\n  code = code.substring(codeStart);\n}\nreturn [{ json: { code } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        64
+      ],
+      "id": "abf33020-2670-41a1-a978-9f579f357b78",
+      "name": "Format Answer"
+    },
+    {
+      "parameters": {
+        "jsCode": "var code = $json.code || \"\";\nvar question = $('Webhook').first().json.body.question.toLowerCase();\nvar keywords = ['dashboard','kpi','graph','pie chart','line chart','bar graph','chart'];\nvar isVisual = false;\nfor (var i = 0; i < keywords.length; i++) {\n  if (question.indexOf(keywords[i]) !== -1) { isVisual = true; break; }\n}\nif (isVisual) {\n  return [{ json: { answer: \"VISUAL_REQUEST\" } }];\n}\nvar cleanCode = code.replace(/```javascript/gi, '').replace(/```js/gi, '').replace(/```/g, '').trim();\nvar codeStart = cleanCode.search(/(const|let|var|function|\\/\\/)/);\n\n// If no JS code found, it's a plain text answer — return directly\nif (codeStart === -1) {\n  return [{ json: { answer: cleanCode } }];\n}\n\nif (codeStart > 0) { cleanCode = cleanCode.substring(codeStart); }\ntry {\n  var dataset = $('Clean Data').first().json.dataset || [];\n  var fn = new Function('dataset', cleanCode);\n  var result = fn(dataset);\n  var answer = typeof result === 'object' ? (result.answer || JSON.stringify(result)) : String(result);\n  return [{ json: { answer: answer } }];\n} catch (err) {\n  // Return raw text instead of error message\n  return [{ json: { answer: code.replace(/```javascript/gi, '').replace(/```js/gi, '').replace(/```/g, '').trim() } }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        64
+      ],
+      "id": "dcee42a2-8f6c-4ea5-8d4f-31e03982266e",
+      "name": "Execute node"
+    },
+    {
+      "parameters": {
+        "jsCode": "const dataset = $('Clean Data').first().json.dataset;\nconst htmlBinary = $('Prepare Email Attachment(0,1)').first().binary;\nconst question = $('Webhook').first().json.body.question || \"\";\n\nconst headers = Object.keys(dataset[0]);\nconst csvRows = [headers.join(',')];\n\nfor (const row of dataset) {\n  const values = headers.map(h => {\n    let val = row[h];\n    \n    if (val === null || val === undefined || val === '') return 'N/A';\n    \n    val = String(val).trim();\n    \n    if (val === '') return 'N/A';\n    \n    if (val.includes(',') || val.includes('\"') || val.includes('\\n')) {\n      val = '\"' + val.replace(/\"/g, '\"\"') + '\"';\n    }\n    \n    return val;\n  });\n  csvRows.push(values.join(','));\n}\n\nconst csvString = csvRows.join('\\n');\nconst binary = Buffer.from(csvString, 'utf8').toString('base64');\nconst filename = `car_data_cleaned_${Date.now()}.csv`;\n\nreturn [{\n  json: { filename, question, csvString },\n  binary: {\n    ...htmlBinary,\n    cleanedCsv: {\n      data: binary,\n      mimeType: 'text/csv',\n      fileName: filename\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        0
+      ],
+      "id": "f74fcbb0-1e5d-4d26-af1d-ef28d39109fe",
+      "name": "Get cleaned csv"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f872f392-f737-4951-b67d-657b58747f28",
+              "leftValue": "={{$('Webhook').first().json.body.question.toLowerCase()}}",
+              "rightValue": "dashboard",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "c928521c-9fc9-4ab6-a639-15a07c5fbc7c",
+              "leftValue": "={{$('Webhook').first().json.body.question.toLowerCase()}}",
+              "rightValue": "kpi",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "fb243569-3cbf-4492-a6bc-87af60ce7382",
+              "leftValue": "={{$('Webhook').first().json.body.question.toLowerCase()}}",
+              "rightValue": "graph",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "d62b8088-538a-48c4-8917-8778855e386f",
+              "leftValue": "={{$('Webhook').first().json.body.question.toLowerCase()}}",
+              "rightValue": "pie chart",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "2dbde81f-ba7c-424a-8af7-a8799f720415",
+              "leftValue": "={{$('Webhook').first().json.body.question.toLowerCase()}}",
+              "rightValue": "line chart",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "ccb1a000-5747-4d2f-a768-8ab7055a08fd",
+              "leftValue": "={{$('Webhook').first().json.body.question.toLowerCase()}}",
+              "rightValue": "bar graph",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        944,
+        64
+      ],
+      "id": "31470e54-0bf2-44da-9054-c41bea37a635",
+      "name": "If(Dashboard request)"
+    },
+    {
+      "parameters": {
+        "jsCode": "let rawHtml = \"\";\ntry {\n  const groqOutput = $('Groq - Genrate HTML').first().json;\n  \n  if (groqOutput.choices?.[0]?.message?.content) {\n    rawHtml = groqOutput.choices[0].message.content;\n  } else if (groqOutput.content?.parts?.[0]?.text) {\n    rawHtml = groqOutput.content.parts[0].text;\n  } else if (groqOutput.text) {\n    rawHtml = groqOutput.text;\n  } else if (groqOutput.content && typeof groqOutput.content === 'string') {\n    rawHtml = groqOutput.content;\n  } else if (groqOutput.candidates?.[0]?.content?.parts?.[0]?.text) {\n    rawHtml = groqOutput.candidates[0].content.parts[0].text;\n  } else {\n    rawHtml = `<html><body><h1>Debug</h1><pre>${JSON.stringify(groqOutput, null, 2)}</pre></body></html>`;\n  }\n} catch(e) {\n  rawHtml = `<html><body><h1>Error</h1><p>${e.message}</p></body></html>`;\n}\n\nconst html = rawHtml\n  .replace(/```html/gi, '')\n  .replace(/```/g, '')\n  .trim();\n\nconst question = $('Webhook').first().json.body.question || \"\";\nconst filename = `dashboard_${Date.now()}.html`;\nconst binary = Buffer.from(html, 'utf8').toString('base64');\n\nreturn [{\n  json: { filename, html, answer: html, question: question },\n  binary: {\n    htmlFile: {\n      data: binary,\n      mimeType: 'text/html',\n      fileName: filename\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1616,
+        0
+      ],
+      "id": "51e90cce-1f05-41fe-9834-7c990531faeb",
+      "name": "Prepare Email Attachment(0,1)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [{\"role\": \"user\", \"content\": $json.prompt }],\n  \"max_tokens\": 1000\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        320,
+        64
+      ],
+      "id": "7809a669-f081-42cd-9e55-9efedff0376b",
+      "name": "Groq - Write ans(code)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "EyFA49P4Rn5dEZkI",
+          "name": "Header Auth account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [{\"role\": \"user\", \"content\": $json.prompt }],\n  \"max_tokens\": 6000\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1424,
+        0
+      ],
+      "id": "9979739f-131b-47cf-9464-4d7fd0864295",
+      "name": "Groq - Genrate HTML",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "EyFA49P4Rn5dEZkI",
+          "name": "Header Auth account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1216,
+        240
+      ],
+      "id": "489c6661-d829-4bbd-a1d6-331e1ec5b1e6",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"answer\": $('Prepare Email Attachment(0,1)').first().json.answer, \"csv\": $('Get cleaned csv').first().json.csvString } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1984,
+        0
+      ],
+      "id": "7a776956-b06e-4557-8967-3e9c134bfc66",
+      "name": "Respond to Webhook2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Clean Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Data": {
+      "main": [
+        [
+          {
+            "node": "Build Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Summary": {
+      "main": [
+        [
+          {
+            "node": "Groq - Write ans(code)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Answer": {
+      "main": [
+        [
+          {
+            "node": "Execute node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Dashboard": {
+      "main": [
+        [
+          {
+            "node": "Groq - Genrate HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute node": {
+      "main": [
+        [
+          {
+            "node": "If(Dashboard request)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get cleaned csv": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If(Dashboard request)": {
+      "main": [
+        [
+          {
+            "node": "Build Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Email Attachment(0,1)": {
+      "main": [
+        [
+          {
+            "node": "Get cleaned csv",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq - Write ans(code)": {
+      "main": [
+        [
+          {
+            "node": "Format Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq - Genrate HTML": {
+      "main": [
+        [
+          {
+            "node": "Prepare Email Attachment(0,1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "7c409ec2-0171-490f-9e14-065c9f66c1d9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1c955f61554748200b158cdae99f3eb96c6e6d8bd04b877e73d0e7bd01395d76"
+  },
+  "id": "Z6H2vZMSSCjryI4C",
+  "tags": []
+}

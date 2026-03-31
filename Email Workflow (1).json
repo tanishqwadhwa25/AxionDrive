@@ -1,0 +1,130 @@
+{
+  "name": "Email Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "send-email",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -224,
+        0
+      ],
+      "id": "23dff713-0ce9-4f8b-add9-7cc75cc10dcd",
+      "name": "Webhook",
+      "webhookId": "9086d775-bb53-4862-b7ca-7b966deeadcf"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "AxionDrive Analytics Report",
+        "message": "=Your AxionDrive dashboard is attached. Open the HTML file in your browser to view charts.",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {
+                "property": "htmlFile"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "73af77c0-2096-4a18-96a6-bfc4a8c06d12",
+      "name": "Send a message",
+      "webhookId": "85adfdd8-b992-4f0b-ab5b-690cb634b0ee",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YsWsjR1FLBxyhzOA",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body.html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        416,
+        0
+      ],
+      "id": "09123301-8084-4f1d-8851-d8a605e002ad",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const html = $json.body.html;\nconst email = $json.body.email;\nconst binary = Buffer.from(html, 'utf8').toString('base64');\nconst filename = `axiondrive_dashboard_${Date.now()}.html`;\n\nreturn [{\n  json: { email, filename },\n  binary: {\n    htmlFile: {\n      data: binary,\n      mimeType: 'text/html',\n      fileName: filename\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d2d47dce-a583-4739-9d45-0dd19581f200",
+      "name": "Prepare HTML Attachment"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare HTML Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare HTML Attachment": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "77722d2c-3e98-4e8f-8f15-876c184f114b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1c955f61554748200b158cdae99f3eb96c6e6d8bd04b877e73d0e7bd01395d76"
+  },
+  "id": "8rEppofB2Sbibgw0",
+  "tags": []
+}
