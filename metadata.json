@@ -1,0 +1,5 @@
+{
+  "name": "AxionDrive",
+  "description": "An AI-powered data analysis engine for automotive datasets with natural language querying and dynamic visualizations.",
+  "requestFramePermissions": []
+}
