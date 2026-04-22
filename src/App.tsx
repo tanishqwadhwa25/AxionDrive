@@ -64,6 +64,7 @@ interface Message {
   role: 'user' | 'assistant';
   content?: string;
   type?: 'text' | 'dashboard';
+  html?: string;    // ← ADD THIS (line 67)
   csv?: string;
   timestamp: Date;
   title?: string;
@@ -127,7 +128,7 @@ export default function App() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
   const [searchHistory, setSearchHistory] = useState('');
-  const [emailModal, setEmailModal] = useState<{ isOpen: boolean, content: string }>({ isOpen: false, content: '' });
+  const [emailModal, setEmailModal] = useState<{ isOpen: boolean, content: string, csv: string }>({ isOpen: false, content: '', csv: '' });
   const [emailInput, setEmailInput] = useState('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
@@ -228,7 +229,7 @@ export default function App() {
       const res = await fetch('/api/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emailInput, html: emailModal.content })
+        body: JSON.stringify({ email: emailInput, html: emailModal.content, csv: emailModal.csv })
       });
       if (!res.ok) throw new Error('Failed to send email');
       showToast('Analytics report sent successfully!');
@@ -420,7 +421,7 @@ export default function App() {
                             <Copy size={14} /> Copy
                           </button>
                           <button 
-                            onClick={() => setEmailModal({ isOpen: true, content: msg.content || msg.html || '' })}
+                            onClick={() => setEmailModal({ isOpen: true, content: msg.html || msg.content || '', csv: msg.csv || '' })}
                             className="text-brand-muted hover:text-brand-neon transition-colors flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider"
                           >
                             <Mail size={14} /> Send to Email

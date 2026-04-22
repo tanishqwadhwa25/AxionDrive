@@ -27,7 +27,7 @@
           "attachmentsUi": {
             "attachmentsBinary": [
               {
-                "property": "htmlFile"
+                "property": "htmlFile,csvFile"
               }
             ]
           }
@@ -66,7 +66,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const html = $json.body.html;\nconst email = $json.body.email;\nconst binary = Buffer.from(html, 'utf8').toString('base64');\nconst filename = `axiondrive_dashboard_${Date.now()}.html`;\n\nreturn [{\n  json: { email, filename },\n  binary: {\n    htmlFile: {\n      data: binary,\n      mimeType: 'text/html',\n      fileName: filename\n    }\n  }\n}];"
+        "jsCode": "const html = $json.body.html;\nconst csv = $json.body.csv || '';\nconst email = $json.body.email;\n\nconst htmlBinary = Buffer.from(html, 'utf8').toString('base64');\nconst htmlFilename = `axiondrive_dashboard_${Date.now()}.html`;\n\nconst result = {\n  json: { email, htmlFilename },\n  binary: {\n    htmlFile: {\n      data: htmlBinary,\n      mimeType: 'text/html',\n      fileName: htmlFilename\n    }\n  }\n};\n\nif (csv && csv.trim()) {\n  const csvBinary = Buffer.from(csv, 'utf8').toString('base64');\n  const csvFilename = `axiondrive_data_${Date.now()}.csv`;\n  result.json.csvFilename = csvFilename;\n  result.binary.csvFile = {\n    data: csvBinary,\n    mimeType: 'text/csv',\n    fileName: csvFilename\n  };\n}\n\nreturn [result];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -120,7 +120,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "77722d2c-3e98-4e8f-8f15-876c184f114b",
+  "versionId": "4e4f74e3-235e-48c9-a409-0cba9513d06d",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "1c955f61554748200b158cdae99f3eb96c6e6d8bd04b877e73d0e7bd01395d76"

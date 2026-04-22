@@ -241,8 +241,8 @@
       "name": "Groq - Write ans(code)",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "EyFA49P4Rn5dEZkI",
-          "name": "Header Auth account 3"
+          "id": "Sdr1HIy0AjHgzMuV",
+          "name": "Header Auth account 2"
         }
       }
     },
@@ -267,8 +267,8 @@
       "name": "Groq - Genrate HTML",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "EyFA49P4Rn5dEZkI",
-          "name": "Header Auth account 3"
+          "id": "flu3Hcbf2xq0U2JR",
+          "name": "Header Auth account"
         }
       }
     },
@@ -449,7 +449,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "7c409ec2-0171-490f-9e14-065c9f66c1d9",
+  "versionId": "ee43a280-9cf2-4335-8be3-ac8bf6cf2814",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "1c955f61554748200b158cdae99f3eb96c6e6d8bd04b877e73d0e7bd01395d76"

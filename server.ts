@@ -8,7 +8,8 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
   app.post("/api/query", async (req, res) => {
     const { query } = req.body;
@@ -74,7 +75,7 @@ async function startServer() {
       const response = await fetch("http://localhost:5678/webhook/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, html }),
+        body: JSON.stringify({ email, html, csv: req.body.csv || '' }),
         signal: controller.signal
       });
       clearTimeout(timeout);
