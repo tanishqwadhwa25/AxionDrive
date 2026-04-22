@@ -55,7 +55,7 @@ async function startServer() {
       type: isHtml ? "dashboard" : "text",
       answer: isHtml ? "" : answer,
       html: isHtml ? answer : "",
-      csv: isHtml ? csv : "",
+      csv: csv,
       metadata: { title: query.substring(0, 50), timestamp: new Date().toISOString() }
     });
     } catch (error: any) {

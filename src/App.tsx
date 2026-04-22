@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Search, 
-  Send, 
-  Mail, 
-  Trash2, 
-  Copy, 
-  Moon, 
-  Sun, 
-  ChevronLeft, 
-  ChevronRight, 
-  BarChart3, 
-  PieChart as PieChartIcon, 
+import {
+  Search,
+  Send,
+  Mail,
+  Trash2,
+  Copy,
+  Moon,
+  Sun,
+  ChevronLeft,
+  ChevronRight,
+  BarChart3,
+  PieChart as PieChartIcon,
   LineChart as LineChartIcon,
   Car,
   DollarSign,
@@ -32,18 +32,18 @@ import {
   MessageCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  LineChart, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
   Line,
   Legend,
   AreaChart,
@@ -99,7 +99,7 @@ const priceTrends = [
 // --- Components ---
 
 const SidebarItem = ({ icon: Icon, label, active = false, collapsed = false, onClick }: any) => (
-  <button 
+  <button
     onClick={onClick}
     className={cn(
       "flex items-center gap-3 w-full p-3 rounded-xl transition-all duration-200 group",
@@ -170,7 +170,7 @@ export default function App() {
       if (!res.ok) throw new Error('Failed to fetch');
 
       const data = await res.json();
-      
+
       const assistantMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -233,7 +233,7 @@ export default function App() {
       });
       if (!res.ok) throw new Error('Failed to send email');
       showToast('Analytics report sent successfully!');
-      setEmailModal({ isOpen: false, content: '' });
+      setEmailModal({ isOpen: false, content: '', csv: '' });
       setEmailInput('');
     } catch (error) {
       showToast('Failed to send email. Please try again.', 'error');
@@ -242,7 +242,7 @@ export default function App() {
     }
   };
 
-  const filteredHistory = history.filter(item => 
+  const filteredHistory = history.filter(item =>
     item.title?.toLowerCase().includes(searchHistory.toLowerCase()) ||
     item.content?.toLowerCase().includes(searchHistory.toLowerCase())
   );
@@ -256,7 +256,7 @@ export default function App() {
       </div>
 
       {/* Sidebar */}
-      <motion.aside 
+      <motion.aside
         initial={false}
         animate={{ width: isSidebarCollapsed ? 80 : 260 }}
         className="glass-panel border-r border-brand-border flex flex-col h-full relative z-20"
@@ -266,7 +266,7 @@ export default function App() {
             <Car className="text-brand-bg" size={24} />
           </div>
           {!isSidebarCollapsed && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="flex flex-col"
@@ -287,7 +287,7 @@ export default function App() {
         </nav>
 
         <div className="p-4">
-          <button 
+          <button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             className="w-full flex items-center justify-center p-2 rounded-xl hover:bg-brand-border text-brand-muted transition-colors"
           >
@@ -307,7 +307,7 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className="p-2 rounded-xl hover:bg-brand-border text-brand-muted transition-colors"
             >
@@ -327,7 +327,7 @@ export default function App() {
         </header>
 
         {/* Content Area */}
-        <div 
+        <div
           ref={scrollRef}
           className="flex-1 overflow-y-auto custom-scrollbar p-8 flex flex-col gap-8 pb-40"
         >
@@ -335,7 +335,7 @@ export default function App() {
             <>
               {messages.length === 0 && !isLoading && (
                 <div className="flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto text-center gap-6">
-                  <motion.div 
+                  <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     className="w-20 h-20 bg-brand-surface border border-brand-border rounded-3xl flex items-center justify-center mb-4"
@@ -344,7 +344,7 @@ export default function App() {
                   </motion.div>
                   <h2 className="text-5xl font-display font-extrabold tracking-tighter">Accelerate your insights with <span className="text-brand-neon">AxionDrive</span>.</h2>
                   <p className="text-brand-muted text-lg max-w-lg">The world's most advanced AI engine for automotive data analysis.</p>
-                  
+
                   <div className="grid grid-cols-2 gap-3 w-full mt-4">
                     {[
                       "What is the most expensive car?",
@@ -352,7 +352,7 @@ export default function App() {
                       "Average price by fuel type",
                       "Price trends for SUVs"
                     ].map((q, i) => (
-                      <button 
+                      <button
                         key={i}
                         onClick={() => handleSend(q)}
                         className="p-4 glass-panel rounded-2xl text-left hover:border-brand-accent transition-colors group"
@@ -366,7 +366,7 @@ export default function App() {
 
               <AnimatePresence>
                 {messages.map((msg) => (
-                  <motion.div 
+                  <motion.div
                     key={msg.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -377,17 +377,17 @@ export default function App() {
                   >
                     <div className={cn(
                       "p-5 rounded-2xl leading-relaxed shadow-sm",
-                      msg.role === 'user' 
-                        ? "bg-brand-accent text-white rounded-tr-none text-base font-semibold" 
+                      msg.role === 'user'
+                        ? "bg-brand-accent text-white rounded-tr-none text-base font-semibold"
                         : "glass-panel rounded-tl-none border-l-4 border-l-brand-accent"
                     )}>
                       {msg.type === 'dashboard' && msg.html ? (
                         <div className="w-full overflow-auto">
-                          <iframe 
-                            srcDoc={msg.html} 
-                            className="rounded-xl border border-brand-border" 
-                            style={{ width: '1200px', height: '900px' }} 
-                            sandbox="allow-scripts allow-same-origin" 
+                          <iframe
+                            srcDoc={msg.html}
+                            className="rounded-xl border border-brand-border"
+                            style={{ width: '1200px', height: '900px' }}
+                            sandbox="allow-scripts allow-same-origin"
                             title="Dashboard"
                           />
                         </div>
@@ -396,10 +396,10 @@ export default function App() {
                           <ReactMarkdown>{msg.content || ''}</ReactMarkdown>
                         </div>
                       )}
-                      
+
                       {msg.role === 'assistant' && (
                         <div className="mt-4 flex items-center gap-4 pt-4 border-t border-brand-border/30">
-                          {msg.type === 'dashboard' && msg.csv && (
+                          {msg.csv && (
                             <button
                               onClick={() => {
                                 const blob = new Blob([msg.csv || ''], { type: 'text/csv' });
@@ -414,26 +414,27 @@ export default function App() {
                               <Upload className="rotate-180" size={14} /> Download CSV
                             </button>
                           )}
-                          <button 
+                          <button
                             onClick={() => msg.content && navigator.clipboard.writeText(msg.content)}
                             className="text-brand-muted hover:text-brand-accent transition-colors flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider"
                           >
                             <Copy size={14} /> Copy
                           </button>
-                          <button 
-                            onClick={() => setEmailModal({ isOpen: true, content: msg.html || msg.content || '', csv: msg.csv || '' })}
-                            className="text-brand-muted hover:text-brand-neon transition-colors flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider"
-                          >
-                            <Mail size={14} /> Send to Email
-                          </button>
+                          {msg.type === 'dashboard' && (
+                            <button
+                              onClick={() => setEmailModal({ isOpen: true, content: msg.html || '', csv: msg.csv || '' })}
+                              className="text-brand-muted hover:text-brand-neon transition-colors flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider"
+                            >
+                              <Mail size={14} /> Send to Email
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
                   </motion.div>
                 ))}
-
                 {isLoading && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="mr-auto flex flex-col gap-3"
@@ -458,15 +459,15 @@ export default function App() {
                 <div className="flex items-center gap-4">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted" size={18} />
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="Search conversations..."
                       value={searchHistory}
                       onChange={(e) => setSearchHistory(e.target.value)}
                       className="bg-brand-surface border border-brand-border rounded-xl pl-10 pr-4 py-2 text-sm outline-none focus:border-brand-accent w-64"
                     />
                   </div>
-                  <button 
+                  <button
                     onClick={clearAllHistory}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl border border-brand-border text-xs font-bold uppercase tracking-widest text-brand-error hover:bg-brand-error/10 transition-colors"
                   >
@@ -489,13 +490,13 @@ export default function App() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
+                        <button
                           onClick={() => reopenHistoryItem(item)}
                           className="p-2 rounded-lg bg-brand-accent/10 text-brand-accent hover:bg-brand-accent hover:text-white transition-all"
                         >
                           <ExternalLink size={18} />
                         </button>
-                        <button 
+                        <button
                           onClick={() => deleteHistoryItem(item.id)}
                           className="p-2 rounded-lg bg-brand-error/10 text-brand-error hover:bg-brand-error hover:text-white transition-all"
                         >
@@ -514,7 +515,7 @@ export default function App() {
               <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-display font-extrabold tracking-tighter">Dataset Analytics</h2>
                 <div className="flex gap-3">
-                  <button 
+                  <button
                     onClick={downloadAnalyticsData}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl border border-brand-border text-xs font-bold uppercase tracking-widest hover:bg-brand-border transition-colors"
                   >
@@ -541,7 +542,7 @@ export default function App() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#1E1E2E" vertical={false} />
                         <XAxis dataKey="name" stroke="#6B6B80" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis stroke="#6B6B80" fontSize={12} tickLine={false} axisLine={false} />
-                        <Tooltip 
+                        <Tooltip
                           contentStyle={{ backgroundColor: '#111118', border: '1px solid #1E1E2E', borderRadius: '12px' }}
                           itemStyle={{ color: '#F0F0F5' }}
                         />
@@ -566,11 +567,11 @@ export default function App() {
                             <Cell key={`cell-${index}`} fill={['#3B82F6', '#E8FF47', '#7C6DFF', '#F43F5E'][index % 4]} />
                           ))}
                         </Pie>
-                        <Tooltip 
+                        <Tooltip
                           contentStyle={{ backgroundColor: '#111118', border: '1px solid #1E1E2E', borderRadius: '12px' }}
                           itemStyle={{ color: '#F0F0F5' }}
                         />
-                        <Legend verticalAlign="bottom" height={36}/>
+                        <Legend verticalAlign="bottom" height={36} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -582,14 +583,14 @@ export default function App() {
                       <AreaChart data={priceTrends}>
                         <defs>
                           <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#1E1E2E" vertical={false} />
                         <XAxis dataKey="year" stroke="#6B6B80" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis stroke="#6B6B80" fontSize={12} tickLine={false} axisLine={false} />
-                        <Tooltip 
+                        <Tooltip
                           contentStyle={{ backgroundColor: '#111118', border: '1px solid #1E1E2E', borderRadius: '12px' }}
                           itemStyle={{ color: '#F0F0F5' }}
                         />
@@ -635,7 +636,7 @@ export default function App() {
           {activeTab === 'settings' && (
             <div className="max-w-4xl mx-auto w-full flex flex-col gap-8">
               <h2 className="text-3xl font-display font-extrabold tracking-tighter">Settings</h2>
-              
+
               <div className="grid gap-6">
                 <GlassCard title="Account Settings">
                   <div className="flex items-center justify-between">
@@ -668,7 +669,7 @@ export default function App() {
                         <span className="font-bold">Theme Mode</span>
                         <span className="text-xs text-brand-muted">Switch between dark and light interface</span>
                       </div>
-                      <button 
+                      <button
                         onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                         className="p-2 rounded-xl bg-brand-border text-brand-text"
                       >
@@ -703,7 +704,7 @@ export default function App() {
           {activeTab === 'help' && (
             <div className="max-w-4xl mx-auto w-full flex flex-col gap-8">
               <h2 className="text-3xl font-display font-extrabold tracking-tighter">Help Center</h2>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <GlassCard title="Quick Start Guide">
                   <div className="flex flex-col gap-4">
@@ -760,14 +761,14 @@ export default function App() {
           <div className="absolute bottom-0 left-0 right-0 p-8 pt-0 z-20">
             <div className="max-w-4xl mx-auto relative">
               <div className="glass-panel p-2 rounded-3xl shadow-2xl neon-shadow flex items-end gap-2">
-                <button 
+                <button
                   onClick={() => setMessages([])}
                   className="p-4 text-brand-muted hover:text-brand-error transition-colors"
                   title="Clear chat"
                 >
                   <Trash2 size={20} />
                 </button>
-                <textarea 
+                <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -780,13 +781,13 @@ export default function App() {
                   className="flex-1 bg-transparent border-none outline-none py-4 px-2 text-sm resize-none max-h-32 custom-scrollbar"
                   rows={1}
                 />
-                <button 
+                <button
                   onClick={() => handleSend()}
                   disabled={!input.trim() || isLoading}
                   className={cn(
                     "p-4 rounded-2xl transition-all duration-200",
-                    input.trim() && !isLoading 
-                      ? "bg-brand-neon text-brand-bg shadow-lg shadow-brand-neon/20" 
+                    input.trim() && !isLoading
+                      ? "bg-brand-neon text-brand-bg shadow-lg shadow-brand-neon/20"
                       : "bg-brand-border text-brand-muted cursor-not-allowed"
                   )}
                 >
@@ -806,14 +807,14 @@ export default function App() {
         <AnimatePresence>
           {emailModal.isOpen && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                onClick={() => setEmailModal({ isOpen: false, content: '' })}
+                onClick={() => setEmailModal({ isOpen: false, content: '', csv: '' })}
                 className="absolute inset-0 bg-brand-bg/80 backdrop-blur-sm"
               />
-              <motion.div 
+              <motion.div
                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -824,27 +825,27 @@ export default function App() {
                     <h3 className="text-2xl font-display font-extrabold tracking-tight">Send to Email</h3>
                     <p className="text-sm text-brand-muted">Enter your email address to receive this analytics report.</p>
                   </div>
-                  
+
                   <div className="flex flex-col gap-4">
                     <div className="relative">
                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-muted" size={20} />
-                      <input 
-                        type="email" 
+                      <input
+                        type="email"
                         placeholder="your@email.com"
                         value={emailInput}
                         onChange={(e) => setEmailInput(e.target.value)}
                         className="w-full bg-brand-surface border border-brand-border rounded-2xl pl-12 pr-4 py-4 text-sm outline-none focus:border-brand-neon transition-colors"
                       />
                     </div>
-                    
+
                     <div className="flex gap-3">
-                      <button 
-                        onClick={() => setEmailModal({ isOpen: false, content: '' })}
+                      <button
+                        onClick={() => setEmailModal({ isOpen: false, content: '', csv: '' })}
                         className="flex-1 py-4 rounded-2xl border border-brand-border font-bold text-sm hover:bg-brand-border transition-colors"
                       >
                         Cancel
                       </button>
-                      <button 
+                      <button
                         onClick={handleSendEmail}
                         disabled={!emailInput.trim() || isSendingEmail}
                         className="flex-1 py-4 rounded-2xl bg-brand-neon text-brand-bg font-bold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
@@ -863,7 +864,7 @@ export default function App() {
         {/* Toast Notification */}
         <AnimatePresence>
           {toast && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 50 }}
