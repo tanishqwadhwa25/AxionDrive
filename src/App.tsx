@@ -381,13 +381,24 @@ export default function App() {
                         ? "bg-brand-accent text-white rounded-tr-none text-base font-semibold"
                         : "glass-panel rounded-tl-none border-l-4 border-l-brand-accent"
                     )}>
-                      {msg.type === 'dashboard' && msg.html ? (
+                      {msg.type === 'dashboard' && msg.html && msg.html.trim().length > 50 ? (
                         <div className="w-full overflow-auto">
                           <iframe
                             srcDoc={msg.html}
                             className="rounded-xl border border-brand-border"
                             style={{ width: '1200px', height: '900px' }}
-                            sandbox="allow-scripts allow-same-origin"
+                            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
+                            onLoad={(e) => {
+                              // Auto-resize iframe to fit content height
+                              const iframe = e.currentTarget;
+                              try {
+                                const doc = iframe.contentDocument || iframe.contentWindow?.document;
+                                if (doc) {
+                                  const height = doc.documentElement.scrollHeight;
+                                  if (height > 200) iframe.style.height = height + 'px';
+                                }
+                              } catch (_) {}
+                            }}
                             title="Dashboard"
                           />
                         </div>
