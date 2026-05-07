@@ -1,7 +1,6 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
-
 dotenv.config();
 
 async function startServer() {
@@ -11,14 +10,19 @@ async function startServer() {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
+  // FIX: Reduced timeout from 60s to 30s for better UX.
+  // n8n queries rarely need more than 30s; 60s leaves users staring at a spinner.
+  const N8N_TIMEOUT = 30000;
+
   app.post("/api/query", async (req, res) => {
     const { query } = req.body;
     if (!query) {
       return res.status(400).json({ error: "Query is required" });
     }
+
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 60000);
+      const timeout = setTimeout(() => controller.abort(), N8N_TIMEOUT);
 
       const response = await fetch("http://localhost:5678/webhook/car-query", {
         method: "POST",
@@ -26,63 +30,96 @@ async function startServer() {
         body: JSON.stringify({ question: query }),
         signal: controller.signal
       });
+
       clearTimeout(timeout);
 
       const text = await response.text();
-    console.log("Raw n8n response:", text.substring(0, 200));
-    let answer = "";
-    let csv = "";
-    try {
-      const parsed = JSON.parse(text);
-      answer = parsed.answer || "";
-      csv = parsed.csv || "";
-    } catch {
-      answer = text;
-    }
-    if (!answer || !answer.trim()) {
+      console.log("Raw n8n response:", text.substring(0, 200));
+
+      let answer = "";
+      let csv = "";
+
+      try {
+        const parsed = JSON.parse(text);
+        answer = parsed.answer || "";
+        csv = parsed.csv || "";
+      } catch {
+        answer = text;
+      }
+
+      if (!answer || !answer.trim()) {
+        res.json({
+          type: "text",
+          answer: "Sorry, I couldn't process your request. Please try again.",
+          html: "",
+          csv: "",
+          metadata: { title: query.substring(0, 50), timestamp: new Date().toISOString() }
+        });
+        return;
+      }
+
+      const trimmed = answer.trim().toLowerCase();
+      const isHtml = trimmed.startsWith("<!doctype") || trimmed.startsWith("<html");
+
       res.json({
-        type: "text",
-        answer: "Sorry, I couldn't process your request. Please try again.",
-        html: "",
-        csv: "",
+        type: isHtml ? "dashboard" : "text",
+        answer: isHtml ? "" : answer,
+        html: isHtml ? answer : "",
+        csv: csv,
         metadata: { title: query.substring(0, 50), timestamp: new Date().toISOString() }
       });
-      return;
-    }
-    const trimmed = answer.trim().toLowerCase();
-    const isHtml = trimmed.startsWith("<!doctype") || trimmed.startsWith("<html");
-    res.json({
-      type: isHtml ? "dashboard" : "text",
-      answer: isHtml ? "" : answer,
-      html: isHtml ? answer : "",
-      csv: csv,
-      metadata: { title: query.substring(0, 50), timestamp: new Date().toISOString() }
-    });
+
     } catch (error: any) {
+      // FIX: Pass error detail through to help with debugging.
+      const isTimeout = error?.name === 'AbortError';
       console.error("n8n Error:", error);
-      res.status(500).json({ error: "Failed to connect to n8n workflow." });
+      res.status(500).json({
+        error: isTimeout
+          ? "Request timed out. n8n may be slow or offline."
+          : "Failed to connect to n8n workflow.",
+        detail: error?.message || String(error)
+      });
     }
   });
 
   app.post("/api/send-email", async (req, res) => {
     const { email, html } = req.body;
+
     if (!email || !html) {
       return res.status(400).json({ error: "Email and html are required" });
     }
+
+    // FIX: Validate email format before sending to n8n.
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: "Invalid email address format" });
+    }
+
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30000);
+
       const response = await fetch("http://localhost:5678/webhook/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, html, csv: req.body.csv || '' }),
         signal: controller.signal
       });
+
       clearTimeout(timeout);
+
+      if (!response.ok) {
+        throw new Error(`n8n responded with status ${response.status}`);
+      }
+
       res.json({ success: true, message: `Report sent to ${email}` });
+
     } catch (error: any) {
       console.error("Email Error:", error);
-      res.status(500).json({ error: "Failed to send email" });
+      res.status(500).json({
+        error: "Failed to send email",
+        detail: error?.message || String(error)
+      });
     }
   });
 
@@ -97,7 +134,8 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`✅ AxionDrive running on http://localhost:${PORT}`);
+    console.log(`🔗 n8n expected at http://localhost:5678`);
   });
 }
 
