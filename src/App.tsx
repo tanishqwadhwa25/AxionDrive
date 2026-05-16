@@ -386,18 +386,33 @@ export default function App() {
                           <iframe
                             srcDoc={msg.html}
                             className="rounded-xl border border-brand-border"
-                            style={{ width: '1200px', height: '900px' }}
+                            style={{ width: '1200px', minHeight: '900px' }}
                             sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
                             onLoad={(e) => {
-                              // Auto-resize iframe to fit content height
                               const iframe = e.currentTarget;
+                              // Step 1: resize after load
+                              const resize = () => {
+                                try {
+                                  const doc = iframe.contentDocument || iframe.contentWindow?.document;
+                                  if (doc) {
+                                    const height = doc.documentElement.scrollHeight;
+                                    if (height > 200) iframe.style.height = height + 'px';
+                                  }
+                                } catch (_) { }
+                              };
+                              resize();
+                              // Step 2: re-trigger charts after they finish painting (Chart.js needs visible dimensions)
+                              setTimeout(resize, 300);
+                              setTimeout(resize, 800);
+                              // Step 3: force all Chart.js instances to resize
                               try {
-                                const doc = iframe.contentDocument || iframe.contentWindow?.document;
-                                if (doc) {
-                                  const height = doc.documentElement.scrollHeight;
-                                  if (height > 200) iframe.style.height = height + 'px';
-                                }
-                              } catch (_) {}
+                                const win = iframe.contentWindow as any;
+                                setTimeout(() => {
+                                  if (win?.Chart) {
+                                    Object.values(win.Chart.instances || {}).forEach((c: any) => c?.resize());
+                                  }
+                                }, 500);
+                              } catch (_) { }
                             }}
                             title="Dashboard"
                           />
